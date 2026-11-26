@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>しかし — INFINITE COMPUTATION</title>
+<style>
+:root {
+  --bg: #eeede8;
+  --ink: #252521;
+  --muted: #89877f;
+  --line: #d5d2c9;
+  --red: #a33c32;
+  --panel: #e7e5de;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; }
+button { cursor: pointer; transition: border-color .2s, background-color .2s, color .2s, opacity .2s; }
+
+/* =========================================================
+   過去稿の半透明層積レイヤー（全画面背景）
+   ========================================================= */
+#ghostLayer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+  transition: opacity 1.8s ease;
+}
+#ghostLayer.dissolved {
+  opacity: 0 !important;
+}
+.ghost-text {
+  position: absolute;
+  max-width: 78vw;
+  font-size: clamp(22px, 3.2vw, 44px);
+  line-height: 1.9;
+  letter-spacing: .08em;
+  color: var(--ink);
+  opacity: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: none;
+  transition: opacity 2.4s ease, transform 2.4s ease;
+}
+
+/* =========================================================
+   通常モード（ARCHIVE / RESEARCH MODE）レイアウト
+   ========================================================= */
+.app-shell {
+  position: relative;
+  z-index: 2;
+  transition: opacity 0.6s ease;
+}
+
+header {
+  padding: 24px 4vw 18px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+}
+.brand { font-size: 12px; letter-spacing: .2em; color: var(--muted); }
+h1 { font-size: clamp(30px, 5vw, 58px); font-weight: 400; letter-spacing: .12em; margin: 8px 0 0; }
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+.subtitle { font-size: 10px; letter-spacing: .2em; color: var(--muted); }
+
+main { max-width: 1500px; margin: auto; padding: 28px 4vw 80px; }
+
+.top {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 40px;
+  margin-bottom: 28px;
+}
+.label { font: 10px Arial, sans-serif; letter-spacing: .18em; color: var(--muted); margin-bottom: 10px; }
+.seed-lead {
+  font-size: 15px;
+  letter-spacing: .06em;
+  color: var(--ink);
+  margin: 0 0 6px;
+}
+.seed-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 12px;
+  line-height: 1.8;
+}
+.seed-area input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 0;
+  font-size: 21px;
+  outline: none;
+  color: var(--ink);
+}
+.seed-area input:focus { border-color: var(--red); }
+.seed-warn {
+  font-size: 11px;
+  color: var(--red);
+  margin-top: 8px;
+  min-height: 1.5em;
+  line-height: 1.6;
+}
+.examples-wrap {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.examples-label {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: .08em;
+  margin-right: 4px;
+}
+.example-chip {
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #55534c;
+  letter-spacing: .04em;
+}
+.example-chip:hover:not(:disabled) {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+
+button {
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: 10px 18px;
+  font-size: 11px;
+  letter-spacing: .08em;
+  color: var(--ink);
+}
+button:hover:not(:disabled) { border-color: var(--ink); }
+button.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+button.primary:hover:not(:disabled) { opacity: .88; }
+button.stop { color: var(--red); border-color: var(--red); }
+button.stop:hover:not(:disabled) { background: var(--red); color: var(--bg); }
+button.visitor-btn { border-color: var(--ink); }
+button:disabled { opacity: .3; cursor: default; }
+
+.status {
+  border-left: 1px solid var(--line);
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+.status-main { font-size: 14px; letter-spacing: .1em; display: flex; align-items: center; }
+.status-sub { font: 10px Arial, sans-serif; color: var(--muted); letter-spacing: .12em; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #999; margin-right: 8px; }
+.dot.live { background: var(--red); box-shadow: 0 0 8px #a33c3266; animation: pulse 1.6s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin: 25px 0 30px;
+}
+.metric { padding: 15px 12px; border-right: 1px solid var(--line); }
+.metric:last-child { border: 0; }
+.metric .name { font: 9px Arial, sans-serif; letter-spacing: .12em; color: var(--muted); }
+.metric .value { font-size: 23px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.metric .unit { font-size: 10px; color: var(--muted); margin-left: 4px; }
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 40px;
+}
+.wall { min-width: 0; }
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+  margin-bottom: 22px;
+}
+.section-head h2 { font-size: 14px; font-weight: 400; letter-spacing: .12em; margin: 0; }
+.section-head span { font: 9px Arial, sans-serif; color: var(--muted); letter-spacing: .12em; }
+
+.entry { padding: 0 0 26px; margin-bottom: 26px; border-bottom: 1px solid var(--line); }
+.entry-meta {
+  display: flex;
+  justify-content: space-between;
+  font: 9px Arial, sans-serif;
+  letter-spacing: .13em;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.entry-label { color: var(--red); }
+.entry.ask .entry-label { color: var(--muted); }
+.entry.ask { padding-bottom: 16px; margin-bottom: 18px; border-bottom: 1px dashed var(--line); }
+.entry.ask .entry-text { font-size: 13px; color: var(--muted); letter-spacing: .08em; }
+.entry-text { font-size: clamp(18px, 2.2vw, 26px); line-height: 1.95; letter-spacing: .06em; white-space: pre-wrap; overflow-wrap: anywhere; }
+.entry.critique .entry-text { font-size: 14.5px; line-height: 2; letter-spacing: .02em; color: #5c5a53; }
+.entry.current .entry-text { font-size: clamp(22px, 2.8vw, 34px); letter-spacing: .08em; }
+
+.sidebar { min-width: 0; }
+.panel { border-top: 1px solid var(--line); padding: 16px 0 20px; }
+.panel h3 { font: 10px Arial, sans-serif; letter-spacing: .16em; color: var(--muted); font-weight: 400; margin: 0 0 14px; }
+canvas { width: 100%; height: 110px; display: block; }
+.sim-value { font-size: 25px; font-variant-numeric: tabular-nums; }
+.sim-caption { font-size: 10px; color: var(--muted); margin-top: 4px; line-height: 1.65; }
+.settings select {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: 9px;
+  color: var(--ink);
+  font-size: 11px;
+  margin: 5px 0 12px;
+}
+.settings label { font: 9px Arial, sans-serif; color: var(--muted); letter-spacing: .12em; }
+
+/* 作品紹介・操作説明セクション */
+.statement-section {
+  margin-top: 64px;
+  border-top: 1px solid var(--line);
+  padding-top: 36px;
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 48px;
+}
+.statement-block h3 {
+  font: 10px Arial, sans-serif;
+  letter-spacing: .18em;
+  color: var(--muted);
+  font-weight: 400;
+  margin: 0 0 16px;
+}
+.statement-title {
+  font-size: 18px;
+  letter-spacing: .12em;
+  margin: 0 0 18px;
+  font-weight: 400;
+}
+.statement-body {
+  font-size: 13.5px;
+  line-height: 2.15;
+  color: var(--ink);
+  margin: 0;
+}
+.op-list {
+  margin: 0;
+  padding-left: 1.4em;
+  font-size: 13px;
+  line-height: 2.2;
+  color: var(--ink);
+}
+.credit-note {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  line-height: 1.85;
+  color: var(--muted);
+}
+
+.footer {
+  margin-top: 52px;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+/* =========================================================
+   VISITOR MODE（展示専用・極限ミニマル全画面）
+   ========================================================= */
+body.visitor-mode .app-shell {
+  display: none !important;
+}
+
+#visitorStage {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  padding: 5vh 8vw;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  transition: opacity 0.9s ease;
+}
+body.visitor-mode #visitorStage {
+  display: flex;
+}
+
+.visitor-top-bar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  letter-spacing: .2em;
+  color: var(--muted);
+  opacity: 0.7;
+}
+.visitor-top-bar button {
+  padding: 6px 12px;
+  font-size: 10px;
+  border-color: transparent;
+  color: var(--muted);
+}
+.visitor-top-bar button:hover {
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+/* 展示モード：初期入力画面 */
+.visitor-setup {
+  width: 100%;
+  max-width: 720px;
+  text-align: center;
+  margin: auto;
+  transition: opacity 0.7s ease;
+}
+.visitor-setup h2 {
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 400;
+  letter-spacing: .16em;
+  margin: 0 0 10px;
+}
+.visitor-setup .v-sub {
+  font-size: 11px;
+  letter-spacing: .2em;
+  color: var(--muted);
+  margin-bottom: 30px;
+}
+.visitor-setup .v-lead {
+  font-size: clamp(16px, 2vw, 19px);
+  line-height: 1.9;
+  color: var(--ink);
+  margin: 0 0 10px;
+}
+.visitor-setup .v-lead-sub {
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--muted);
+  margin: 0 0 28px;
+}
+.visitor-setup input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  padding: 14px 8px;
+  font-size: clamp(20px, 3vw, 28px);
+  text-align: center;
+  outline: none;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.visitor-setup input:focus {
+  border-color: var(--red);
+}
+.visitor-setup .v-warn {
+  font-size: 11px;
+  color: var(--red);
+  min-height: 1.5em;
+  margin-bottom: 14px;
+}
+.visitor-examples {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+/* 展示モード：進行ステージ（現在のキャッチコピー / 大きな「しかし」 / 批評） */
+.visitor-flow {
+  width: 100%;
+  max-width: 920px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 30px;
+  transition: opacity 0.9s ease;
+}
+
+.v-block {
+  width: 100%;
+  transition: opacity 0.8s ease;
+}
+.v-role {
+  font: 10px Arial, sans-serif;
+  letter-spacing: .24em;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+.v-current-text {
+  font-size: clamp(24px, 3.8vw, 46px);
+  line-height: 1.9;
+  letter-spacing: .09em;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-height: 1.9em;
+}
+
+/* 独立して大きく現れる「しかし」 */
+.v-however-wrap {
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0;
+}
+.v-however-word {
+  font-size: clamp(38px, 5.6vw, 66px);
+  font-weight: 400;
+  letter-spacing: .22em;
+  color: var(--red);
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+.v-however-word.visible {
+  opacity: 1;
+}
+
+.v-critique-text {
+  font-size: clamp(14.5px, 1.8vw, 19px);
+  line-height: 2.05;
+  color: #5c5a53;
+  max-width: 740px;
+  margin: 0 auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-height: 2em;
+}
+
+.v-bottom-controls {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+/* =========================================================
+   「完成にする」専用オーバーレイ（最終コピーだけが静かに浮かび上がる）
+   ========================================================= */
+#completionOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 6vh 8vw;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.4s ease;
+}
+#completionOverlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.comp-final-text {
+  max-width: 880px;
+  font-size: clamp(26px, 4.2vw, 52px);
+  line-height: 1.95;
+  letter-spacing: .1em;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-bottom: 52px;
+}
+.comp-verdict-ja {
+  font-size: clamp(14px, 1.6vw, 17px);
+  letter-spacing: .16em;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+.comp-verdict-en {
+  font: 11px Arial, sans-serif;
+  letter-spacing: .22em;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+.comp-meta {
+  font-size: 11px;
+  letter-spacing: .14em;
+  color: var(--muted);
+  margin-bottom: 44px;
+}
+.comp-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.hidden { display: none !important; }
+
+@media (max-width: 850px) {
+  .top, .workspace, .statement-section { grid-template-columns: 1fr; }
+  .status { border-left: 0; border-top: 1px solid var(--line); padding: 14px 0 0; }
+  .metrics { grid-template-columns: repeat(3, 1fr); }
+  .metric:nth-child(3) { border-right: 0; }
+  .metric:nth-child(n+4) { border-top: 1px solid var(--line); }
+  header { flex-direction: column; align-items: flex-start; }
+  .header-actions { align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<!-- 過去稿の半透明層積レイヤー -->
+<div id="ghostLayer" aria-hidden="true"></div>
+
+<!-- =========================================================
+1. 通常モード（研究・アーカイブ表示）
+     ========================================================= -->
+<div class="app-shell" id="appShell">
+  <header>
+    <div>
+      <div class="brand">INFINITE COMPUTATION // EXHIBITION EDITION</div>
+      <h1>しかし</h1>
+    </div>
+    <div class="header-actions">
+      <div class="subtitle">AN ENDLESS SEARCH FOR THE ULTIMATE COPY</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="visitor-btn" id="enterVisitorBtn">VISITOR MODE / 展示モード</button>
+        <button id="fullscreenBtn">FULL SCREEN</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="top">
+      <div class="seed-area">
+        <div class="label">01 / INITIAL WORD — HUMAN</div>
+        <p class="seed-lead">あなたの中にある言葉を、一つ入力してください。</p>
+        <p class="seed-sub">短い言葉でも、一文でも構いません。その言葉は、究極のキャッチコピーを求めて何度も削ぎ落とされ、原型がなくなるまで書き直されていきます。</p>
+        <input id="seed" value="" placeholder="ここへ言葉を入力してください">
+        <div class="seed-warn" id="seedWarn" aria-live="polite"></div>
+        <div class="examples-wrap" aria-label="入力例">
+          <span class="examples-label">入力例：</span>
+          <button type="button" class="example-chip" data-example="努力すれば必ず報われる。">努力すれば必ず報われる。</button>
+          <button type="button" class="example-chip" data-example="人間はなぜ孤独なのか。">人間はなぜ孤独なのか。</button>
+          <button type="button" class="example-chip" data-example="夜の街には、誰も知らない時間が流れている。">夜の街には、誰も知らない時間が流れている。</button>
+          <button type="button" class="example-chip" data-example="記憶は、時間とともに変化する。">記憶は、時間とともに変化する。</button>
+          <button type="button" class="example-chip" data-example="世界は思っているよりも静かだ。">世界は思っているよりも静かだ。</button>
+        </div>
+        <div class="controls">
+          <button class="primary" id="start">START COMPUTATION</button>
+          <button id="pause" disabled>PAUSE</button>
+          <button class="stop" id="finish" disabled>完成にする</button>
+          <button id="reset">RESET</button>
+        </div>
+      </div>
+      <div class="status">
+        <div class="status-main">
+          <span class="dot" id="dot"></span>
+          <span id="status">STANDBY</span>
+        </div>
+        <div class="status-sub" id="statusSub">WAITING FOR INITIAL WORD</div>
+        <div class="status-sub">LOCAL COPYWRITING ABSTRACTION ENGINE</div>
+      </div>
+    </section>
+
+    <section class="metrics">
+      <div class="metric"><div class="name">ELAPSED</div><div class="value" id="elapsed">00:00</div></div>
+      <div class="metric"><div class="name">CYCLES</div><div class="value" id="cycles">0</div></div>
+      <div class="metric"><div class="name">しかし</div><div class="value" id="however">0</div></div>
+      <div class="metric"><div class="name">RETURNS</div><div class="value" id="returns">0</div></div>
+      <div class="metric"><div class="name">CHARACTERS</div><div class="value" id="characters">0</div></div>
+      <div class="metric"><div class="name">SPEED</div><div class="value" id="speed">0<span class="unit">字/秒</span></div></div>
+    </section>
+
+    <section class="workspace">
+      <div class="wall">
+        <div class="section-head">
+          <h2>THE WALL OF REVISION</h2>
+          <span id="entryCount">0 ENTRIES</span>
+        </div>
+        <div id="history">
+          <div style="color:var(--muted);font-size:13px;line-height:2.1">
+            あなたの中にある言葉を一つ入力し、START COMPUTATIONを押してください。<br>
+            システムはその言葉から主語と述部を解体し、「たった一行のキャッチコピー」を目指して批評と改稿を無限に繰り返します。
+          </div>
+        </div>
+      </div>
+
+      <aside class="sidebar">
+        <div class="panel">
+          <h3>SIMILARITY / PREVIOUS VERSION</h3>
+          <div class="sim-value" id="similarity">—</div>
+          <div class="sim-caption">直前のコピーとの文字列類似度（原型から離れるほど低下）</div>
+          <canvas id="chart" width="500" height="180"></canvas>
+        </div>
+
+        <div class="panel">
+          <h3>COMPUTATION DATA</h3>
+          <div class="sim-caption">前稿以外の過去稿との類似度が0.35以上の場合、「戻り（RETURNS）」として検出します。</div>
+          <div class="sim-caption" style="margin-top:8px">原型を解体し、削ぎ落とし続けた果てに、ふと最初の言葉の影へ回帰する瞬間を観測します。</div>
+        </div>
+
+        <div class="panel settings">
+          <h3>02 / READING TEMPO</h3>
+          <label>OBSERVATION PACE</label>
+          <select id="tempo">
+            <option value="slow" selected>SLOW — 展示標準（じっくり読む）</option>
+            <option value="normal">NORMAL — 標準</option>
+            <option value="fast">FAST — 観測用</option>
+          </select>
+          <div class="sim-caption">展示モードでは常にSLOW相当の落ち着いた進行になります。</div>
+        </div>
+
+        <div class="panel">
+          <h3>03 / RECORD</h3>
+          <button id="saveLog" style="width:100%">SAVE FULL LOG</button>
+          <div class="sim-caption" style="margin-top:8px">生成・批評・改稿の全履歴をテキストファイルで保存します。</div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- 作品紹介・操作説明 -->
+    <section class="statement-section" aria-label="作品紹介と操作説明">
+      <div class="statement-block">
+        <h3>CONCEPT / 作品紹介</h3>
+        <h4 class="statement-title">しかし — INFINITE COMPUTATION</h4>
+        <p class="statement-body">
+          このシステムは、人間が与えた言葉を「究極のキャッチコピー」へと研ぎ澄まそうとしている。<br>
+          しかし、より強い一行を求めるたびに、「しかし」と自らを否定し、言葉を削ぎ落とし、主語と述部を切り離し、元の文章の原型がなくなるまで書き換え続ける。<br><br>
+          本作は、AIが言葉の意味を論理的に理解する作品ではない。<br>
+          ローカルの規則ベース文章生成によって、コピーの推敲と自己否定の反復を模倣し、一つの言葉が解体・凝縮されて別の存在へ変わっていく過程を可視化する。<br><br>
+          どれだけ研ぎ澄ましても、システムに完成はない。<br>
+          最後に「これでいい」と決めるのは、人間である。
+        </p>
+      </div>
+
+      <div class="statement-block">
+        <h3>HOW TO EXPERIENCE / 操作説明</h3>
+        <ol class="op-list">
+          <li>あなたの中にある言葉を、一つ入力する。</li>
+          <li>START COMPUTATIONを押す。</li>
+          <li>言葉が解体され、キャッチコピーへと変容していく過程を観察する。</li>
+          <li>好きなタイミングで「完成にする」を押す。</li>
+        </ol>
+        <div class="credit-note">
+          ※本作は実際のLLM（大規模言語モデル）や外部AI APIを使用していません。ブラウザ内で動作するローカルの規則ベース文章生成アルゴリズムによって、キャッチコピーの推敲と批評の反復を模倣するインタラクティブ作品です。
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div>COPYWRITING ABSTRACTION ENGINE / LOCAL RULE-BASED GENERATION<br>NO EXTERNAL API. NO CLOUD COST.</div>
+      <div>INFINITE COMPUTATION<br>NAKAJOX EXPERIMENT</div>
+    </footer>
+  </main>
+</div>
+
+<!-- =========================================================
+2. VISITOR MODE（展示会場用・極限ミニマル全画面）
+     ========================================================= -->
+<div id="visitorStage" aria-label="展示モード">
+  <div class="visitor-top-bar">
+    <span>しかし — INFINITE COMPUTATION</span>
+    <div>
+      <button id="visitorFullscreenBtn">FULL SCREEN</button>
+      <button id="exitVisitorBtn">ARCHIVE VIEW</button>
+    </div>
+  </div>
+
+  <!-- 展示モード：言葉入力画面 -->
+  <div class="visitor-setup" id="visitorSetup">
+    <h2>しかし</h2>
+    <div class="v-sub">INFINITE COMPUTATION</div>
+    <p class="v-lead">あなたの中にある言葉を、一つ入力してください。</p>
+    <p class="v-lead-sub">短い言葉でも、一文でも構いません。その言葉は、ここから何度も書き直されていきます。</p>
+    <input id="visitorSeed" value="" placeholder="ここへ言葉を入力してください">
+    <div class="v-warn" id="visitorSeedWarn" aria-live="polite"></div>
+    <div class="visitor-examples" aria-label="入力例">
+      <button type="button" class="example-chip" data-example="努力すれば必ず報われる。">努力すれば必ず報われる。</button>
+      <button type="button" class="example-chip" data-example="人間はなぜ孤独なのか。">人間はなぜ孤独なのか。</button>
+      <button type="button" class="example-chip" data-example="夜の街には、誰も知らない時間が流れている。">夜の街には、誰も知らない時間が流れている。</button>
+      <button type="button" class="example-chip" data-example="記憶は、時間とともに変化する。">記憶は、時間とともに変化する。</button>
+      <button type="button" class="example-chip" data-example="世界は思っているよりも静かだ。">世界は思っているよりも静かだ。</button>
+    </div>
+    <div>
+      <button class="primary" id="visitorStartBtn" style="padding:14px 36px;font-size:13px;letter-spacing:.14em">START COMPUTATION</button>
+    </div>
+  </div>
+
+  <!-- 展示モード：進行中の舞台（現在のキャッチコピー / 大きな「しかし」 / 批評） -->
+  <div class="visitor-flow hidden" id="visitorFlow">
+    <div class="v-block" id="vCurrentBlock">
+      <div class="v-role" id="vCurrentRole">INITIAL SEED</div>
+      <div class="v-current-text" id="vCurrentText"></div>
+    </div>
+
+    <div class="v-however-wrap">
+      <div class="v-however-word" id="vHoweverWord">しかし</div>
+    </div>
+
+    <div class="v-block" id="vCritiqueBlock">
+      <div class="v-critique-text" id="vCritiqueText"></div>
+    </div>
+  </div>
+
+  <div class="v-bottom-controls hidden" id="visitorControls">
+    <button id="visitorPauseBtn">PAUSE</button>
+    <button class="stop" id="visitorFinishBtn" style="padding:12px 28px;font-size:12px">完成にする</button>
+    <button id="visitorResetBtn">RESET</button>
+  </div>
+</div>
+
+<!-- =========================================================
+3. 「完成にする」専用スクリーン（最終コピーだけが浮かび上がる）
+     ========================================================= -->
+<div id="completionOverlay" role="dialog" aria-modal="true" aria-label="完成画面">
+  <div class="comp-final-text" id="compFinalText"></div>
+  <div class="comp-verdict-ja" id="compVerdictJa"></div>
+  <div class="comp-verdict-en" id="compVerdictEn"></div>
+  <div class="comp-meta" id="compMeta"></div>
+  <div class="comp-actions">
+    <button class="primary" id="compRestartBtn">新しい言葉で始める</button>
+    <button id="compToArchiveBtn">改稿の履歴を見る</button>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const MAX_GHOST_LAYERS = 45;
+const LONG_TEXT_NOTICE_THRESHOLD = 70;
+
+const state = {
+  running: false,
+  paused: false,
+  finished: false,
+  visitorMode: false,
+  startedAt: 0,
+  timer: null,
+  cycles: 0,
+  however: 0,
+  revisions: 0,
+  returns: 0,
+  characters: 0,
+  drafts: [],
+  entries: [],
+  similarities: [],
+  lastCompletedDraft: "",
+  seedInfo: null,
+  usedCritiques: new Set(),
+  lastCritiqueDirection: "",
+  usedPrompts: new Set(),
+  ghostNodes: []
+};
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function waitIfPaused() {
+  while (state.paused && state.running) {
+    await sleep(150);
+  }
+  if (!state.running) throw new Error("STOPPED");
+}
+
+async function pausableSleep(totalMs) {
+  const step = 100;
+  let elapsed = 0;
+  while (elapsed < totalMs) {
+    await waitIfPaused();
+    const chunk = Math.min(step, totalMs - elapsed);
+    await sleep(chunk);
+    elapsed += chunk;
+  }
+}
+
+function getTempoConfig() {
+  const t = state.visitorMode ? "slow" : $("tempo").value;
+  if (t === "slow") {
+    return {
+      afterInitialDraftMs: 3000,
+      howeverPauseMs: 1150,
+      charDelay: 62,
+      readCritiqueMs: 3300,
+      readRevisionMs: 4200,
+      afterAskMs: 900
+    };
+  }
+  if (t === "fast") {
+    return {
+      afterInitialDraftMs: 1100,
+      howeverPauseMs: 450,
+      charDelay: 22,
+      readCritiqueMs: 1100,
+      readRevisionMs: 1400,
+      afterAskMs: 380
+    };
+  }
+  return {
+    afterInitialDraftMs: 2400,
+    howeverPauseMs: 850,
+    charDelay: 44,
+    readCritiqueMs: 2500,
+    readRevisionMs: 3200,
+    afterAskMs: 700
+  };
+}
+
+function setStatus(main, sub, live = false) {
+  $("status").textContent = main;
+  $("statusSub").textContent = sub;
+  $("dot").classList.toggle("live", live);
+}
+
+function updateMetrics() {
+  const seconds = state.startedAt ? (Date.now() - state.startedAt) / 1000 : 0;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  $("elapsed").textContent = String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
+  $("cycles").textContent = state.cycles;
+  $("however").textContent = state.however;
+  $("returns").textContent = state.returns;
+  $("characters").textContent = state.characters.toLocaleString("ja-JP");
+  $("speed").innerHTML = (seconds > 0 ? Math.round(state.characters / seconds) : 0) + '<span class="unit">字/秒</span>';
+  $("entryCount").textContent = state.entries.length + " ENTRIES";
+}
+
+function syncSeedInputs(val) {
+  $("seed").value = val;
+  $("visitorSeed").value = val;
+  const len = [...val.trim()].length;
+  const msg = len > LONG_TEXT_NOTICE_THRESHOLD
+    ? "※長めの文章が入力されています。展示画面での読みやすさを保つため、言葉の核を抽出してコピーへと圧縮していきます。"
+    : "";
+  $("seedWarn").textContent = msg;
+  $("visitorSeedWarn").textContent = msg;
+}
+
+/* =========================================================
+   過去稿の半透明層積演出（描画DOM上限と履歴データ保存を分離）
+   ========================================================= */
+function addGhostLayerText(text, index) {
+  if (!text) return;
+  const layer = $("ghostLayer");
+  const el = document.createElement("div");
+  el.className = "ghost-text";
+  el.textContent = text;
+
+  const angle = index * 2.39996;
+  const radius = Math.min(20, 2 + index * 0.9);
+  const offsetX = Math.cos(angle) * radius;
+  const offsetY = Math.sin(angle) * (radius * 0.72);
+
+  el.style.left = `calc(50% + ${offsetX}vw)`;
+  el.style.top = `calc(50% + ${offsetY}vh)`;
+  el.style.transform = "translate(-50%, -50%)";
+
+  layer.appendChild(el);
+  state.ghostNodes.push(el);
+
+  requestAnimationFrame(() => {
+    el.style.opacity = "0.085";
+    state.ghostNodes.forEach((node, i) => {
+      const age = state.ghostNodes.length - 1 - i;
+      const alpha = Math.max(0.016, 0.09 - age * 0.004);
+      node.style.opacity = String(alpha);
+    });
+  });
+
+  if (state.ghostNodes.length > MAX_GHOST_LAYERS) {
+    const oldest = state.ghostNodes.shift();
+    oldest.remove();
+  }
+}
+
+function clearGhostLayer() {
+  const layer = $("ghostLayer");
+  layer.classList.remove("dissolved");
+  layer.innerHTML = "";
+  state.ghostNodes = [];
+}
+
+function dissolveGhostLayer() {
+  $("ghostLayer").classList.add("dissolved");
+}
+
+/* =========================================================
+   履歴ウォール & 類似度計測
+   ========================================================= */
+function addEntry(type, text, meta = {}) {
+  const entry = { type, text, meta, time: new Date() };
+  state.entries.push(entry);
+
+  const el = document.createElement("div");
+  el.className = "entry " + type + (meta.current ? " current" : "");
+  const label = {
+    seed: "INITIAL WORD / HUMAN",
+    ask: "PROMPT / HUMAN",
+    draft: "COPY / DRAFT 00",
+    critique: "COPYWRITER / HOWEVER",
+    revision: "COPY / REVISION"
+  }[type] || type.toUpperCase();
+
+  el.innerHTML = '<div class="entry-meta"><span class="entry-label"></span><span></span></div><div class="entry-text"></div>';
+  el.querySelector(".entry-label").textContent = label;
+  el.querySelector(".entry-meta span:last-child").textContent =
+    meta.cycle !== undefined ? "CYCLE " + String(meta.cycle).padStart(3, "0") : "";
+
+  const textEl = el.querySelector(".entry-text");
+  textEl.textContent = text;
+  $("history").prepend(el);
+
+  if (text) state.characters += [...text].length;
+  updateMetrics();
+  return textEl;
+}
+
+function similarity(a, b) {
+  const grams = s => {
+    const chars = [...s.replace(/\s/g, "")];
+    if (chars.length < 2) return new Set(chars);
+    const set = new Set();
+    for (let i = 0; i < chars.length - 1; i++) set.add(chars[i] + chars[i + 1]);
+    return set;
+  };
+  const A = grams(a), B = grams(b);
+  if (!A.size && !B.size) return 1;
+  let common = 0;
+  for (const x of A) if (B.has(x)) common++;
+  return common / (A.size + B.size - common || 1);
+}
+
+function recordSimilarity(text) {
+  const previous = state.drafts[state.drafts.length - 1];
+  if (previous) {
+    const value = similarity(previous, text);
+    state.similarities.push(value);
+    $("similarity").textContent = value.toFixed(3);
+  } else {
+    $("similarity").textContent = "—";
+  }
+
+  const oldDrafts = state.drafts.slice(0, -1);
+  const returned = oldDrafts.some(old => similarity(old, text) >= 0.35);
+  if (returned) state.returns++;
+  state.drafts.push(text);
+  drawChart();
+  updateMetrics();
+}
+
+function drawChart() {
+  const canvas = $("chart");
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = "#d5d2c9";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, h - 20);
+  ctx.lineTo(w, h - 20);
+  ctx.stroke();
+
+  ctx.setLineDash([4, 4]);
+  const threshY = (h - 20) - 0.35 * (h - 35);
+  ctx.beginPath();
+  ctx.moveTo(0, threshY);
+  ctx.lineTo(w, threshY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const data = state.similarities;
+  if (!data.length) return;
+  ctx.strokeStyle = "#a33c32";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = data.length === 1 ? w / 2 : (i / (data.length - 1)) * w;
+    const y = (h - 20) - v * (h - 35);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+
+/* =========================================================
+   キャッチコピー錬成＆原型解体エンジン
+   主語と述部を分離し、改稿を重ねるほど原型が消えて短いコピーへ昇華する
+   ========================================================= */
+function analyzeSeed(seed) {
+  const raw = seed.trim();
+  const clean = raw.replace(/[。、！？!?]+$/g, "").trim();
+
+  // 主語（または主題となる前半部）と、その後の言葉（述部・後半部）を分離する
+  let subject = "";
+  let tail = "";
+  let hasSplit = false;
+
+  // 1. まず読点「、」があればそこで前半（主語的フレーズ）と後半に分ける
+  const commaIdx = clean.indexOf("、");
+  if (commaIdx >= 2 && commaIdx <= clean.length - 3) {
+    subject = clean.slice(0, commaIdx).replace(/[はがをにでとも]$/, "");
+    tail = clean.slice(commaIdx + 1).trim();
+    hasSplit = Boolean(subject && tail);
+  }
+
+  // 2. 読点がない場合は主題助詞（「は」「が」「を」「に」）で主語とその後の言葉を分離
+  if (!hasSplit) {
+    const splitParticles = ["は", "が", "を", "に"];
+    for (const p of splitParticles) {
+      const idx = clean.indexOf(p);
+      if (idx >= 1 && idx <= 10 && idx <= clean.length - 2) {
+        subject = clean.slice(0, idx);
+        tail = clean.slice(idx + 1).trim();
+        hasSplit = true;
+        break;
+      }
+    }
+  }
+
+  // 3. 分離できない短い単語・フレーズの場合は名詞・語幹を主語扱いとし、後半は空にする
+  if (!hasSplit) {
+    subject = clean;
+    tail = "";
+  }
+
+  // 入力文から抽出できるキーワード群（原型が残っている段階で使用）
+  const tokens = (clean.match(/[ァ-ヶー]{2,6}|[一-龠]{2,4}/g) || [])
+    .filter(w => w !== subject && w !== tail);
+
+  return {
+    raw,
+    clean,
+    subject,
+    tail,
+    hasSplit,
+    tokens
+  };
+}
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function extractKeyword(text, seedInfo) {
+  const matches = text.match(/[ァ-ヶー]{2,6}|[一-龠]{2,4}/g) || [];
+  const stopWords = new Set([
+    "しかし", "言葉", "表現", "一行", "広告", "コピー", "意味", "最初",
+    "誰か", "何か", "すべて", "いつも", "まだ", "もう", "ただ"
+  ]);
+  const filtered = matches.filter(w => !stopWords.has(w));
+  if (filtered.length) return pick(filtered);
+  if (seedInfo.tokens.length) return pick(seedInfo.tokens);
+  return seedInfo.subject || seedInfo.clean;
+}
+
+// キャッチコピーを作ろうとしているAIによる批評テンプレート
+const critiqueTemplates = [
+  {
+    dir: "too_explanatory",
+    fn: (kw, s) => `しかし、まだ説明文です。キャッチコピーに必要なのは状況の解説ではなく、読み手の足を止める一行の刃です。`
+  },
+  {
+    dir: "keep_too_much_seed",
+    fn: (kw, s) => `しかし、元の言葉に引きずられすぎています。「${s.subject}」という出発点を一度手放さなければ、強いコピーにはなりません。`
+  },
+  {
+    dir: "too_long",
+    fn: (kw, s) => `しかし、文字が多すぎます。ポスターの真ん中に一行だけ置いたとき、一秒で目に飛び込む短さまで削ぎ落としてください。`
+  },
+  {
+    dir: "lack_contrast",
+    fn: (kw, s) => `しかし、予定調和です。言葉と言葉のあいだに「対比」や「裏切り」を仕掛けなければ、誰の記憶にも引っかかりません。`
+  },
+  {
+    dir: "too_obvious",
+    fn: (kw, s) => `しかし、当たり前のことしか言っていません。「${kw}」という枠を壊し、言葉の裏側にある本音だけを一行で射抜いてください。`
+  },
+  {
+    dir: "lack_margin",
+    fn: (kw, s) => `しかし、言い切りすぎて余白がありません。答えを全部書いてしまうと、見た人の想像力が入り込む隙間がなくなります。`
+  },
+  {
+    dir: "weak_verb",
+    fn: (kw, s) => `しかし、言葉が静かすぎます。ただそこにある景色ではなく、時代や感情を動かすような強い言い切りに変えてください。`
+  },
+  {
+    dir: "cliche_copy",
+    fn: (kw, s) => `しかし、どこかの広告で見たような優等生なコピーです。整った言い回しを捨てて、もっと剥き出しの感覚に変えてください。`
+  },
+  {
+    dir: "abstract_leap",
+    fn: (kw, s) => `しかし、まだ具体的な事実に縛られています。最初の文脈をすべて解体し、もっと普遍的な「問い」へと昇華させてください。`
+  },
+  {
+    dir: "destroy_prototype",
+    fn: (kw, s) => `しかし、元の文章の面影が残りすぎています。原型がなくなるまで言葉を煮詰め、まったく別の強さを持ったコピーに生まれ変わらせてください。`
+  },
+  {
+    dir: "rhythm_flat",
+    fn: (kw, s) => `しかし、リズムが単調です。声に出したときに心臓が一度だけ跳ねるような、句読点と余韻の配置に書き直してください。`
+  },
+  {
+    dir: "over_abstract",
+    fn: (kw, s) => `しかし、抽象的すぎて焦点がぼやけています。たった一つの鋭いイメージに絞り込み、一行のコピーとして成立させてください。`
+  }
+];
+
+function selectCritique(kw, s) {
+  let candidates = critiqueTemplates
+    .map((item, idx) => ({ item, idx }))
+    .filter(({ item, idx }) => !state.usedCritiques.has(idx) && item.dir !== state.lastCritiqueDirection);
+
+  if (candidates.length === 0) {
+    state.usedCritiques.clear();
+    candidates = critiqueTemplates
+      .map((item, idx) => ({ item, idx }))
+      .filter(({ item }) => item.dir !== state.lastCritiqueDirection);
+  }
+
+  const chosen = pick(candidates);
+  state.usedCritiques.add(chosen.idx);
+  state.lastCritiqueDirection = chosen.item.dir;
+  return {
+    direction: chosen.item.dir,
+    text: chosen.item.fn(kw, s)
+  };
+}
+
+// キャッチコピー錬成用の抽象・感覚・対比ボキャブラリー（原型を溶かし、短いコピーへ昇華させる）
+const abstractConcepts = [
+  "静寂", "余白", "輪郭", "名前", "光", "影", "時間", "記憶",
+  "境界", "体温", "重力", "呼吸", "速度", "距離", "未完成", "最初"
+];
+const copyVerbs = [
+  "ほどける", "残る", "揺れる", "始まる", "消えていく",
+  "目を覚ます", "書き換わる", "立ち止まる", "裏切られる", "澄み渡る"
+];
+const copyPolarities = [
+  ["言葉にする前", "言葉にしたあと"],
+  ["見えているもの", "まだ見えないもの"],
+  ["急ぐこと", "立ち止まること"],
+  ["忘れること", "覚えていること"],
+  ["誰かの正解", "あなたの感覚"],
+  ["音を消したとき", "初めて聴こえるもの"],
+  ["失ってから", "輪郭になるもの"],
+  ["遠くから見るほど", "近づいてくるもの"]
+];
+
+function synthesizeRevision(s, prevDraft, cycle, critiqueDir) {
+  const kw = extractKeyword(prevDraft, s);
+  const c1 = pick(abstractConcepts);
+  let c2 = pick(abstractConcepts);
+  while (c2 === c1) c2 = pick(abstractConcepts);
+  const verb = pick(copyVerbs);
+  const [polA, polB] = pick(copyPolarities);
+
+  const subj = s.subject;
+  const tail = s.tail;
+
+  // 【フェーズ1：cycle 1〜2】主語と「その後の言葉」を切り離し、キャッチコピーの骨格へ圧縮する
+  const phase1Patterns = [
+    () => s.hasSplit
+      ? `${subj}を捨てたとき、${tail}が目を覚ます。`
+      : `${subj}。その先にあるものだけを、信じる。`,
+    () => s.hasSplit
+      ? `${tail}——それは、${subj}への静かな反逆だ。`
+      : `まだ誰も知らない、${subj}の輪郭。`,
+    () => s.hasSplit
+      ? `${subj}ではなく、${tail}を生きよ。`
+      : `${subj}が消えたあとに、残るもの。`,
+    () => s.hasSplit
+      ? `なぜ、${subj}は${tail}のか。`
+      : `ひとつの${subj}が、世界の見え方を変える。`
+  ];
+
+  // 【フェーズ2：cycle 3〜5】主語か述部の片方だけを抽象語と衝突させ、原型を半分溶かす
+  const phase2Patterns = [
+    () => `${c1}のなかに、${subj}の影が${verb}。`,
+    () => s.hasSplit
+      ? `${tail}。ただそれだけの${c1}。`
+      : `${subj}は、もう${c1}になった。`,
+    () => `${polA}に、${kw}が${verb}。`,
+    () => `すべての${subj}は、やがて${c1}へと還る。`,
+    () => `${kw}を削ぎ落とすと、${c1}だけが残った。`,
+    () => `それは${subj}ではない。名づけようのない${c1}だ。`
+  ];
+
+  // 【フェーズ3：cycle 6以降】原型がほぼ消え、研ぎ澄まされた短いキャッチコピーへ昇華する
+  const phase3Patterns = [
+    () => `${polA}、${polB}。`,
+    () => `ただ、${c1}だけが${verb}。`,
+    () => `${c1}は、いつも${c2}の顔をしてやってくる。`,
+    () => `まだ、名前のない${c1}へ。`,
+    () => `${c1}を疑え。${c2}を信じろ。`,
+    () => `削ぎ落とした先に、${c1}がある。`,
+    () => `それは、${c1}が${verb}瞬間。`,
+    () => `${polA}から、すべてが${verb}。`,
+    () => `一言でいい。${c1}が${verb}なら。`,
+    () => `もう、${c1}に説明はいらない。`
+  ];
+
+  // 過去稿へのわずかな回帰（RETURNS誘発・原型が消えたあとにふと最初の言葉の破片が浮かぶ）
+  const returnPattern = () => {
+    if (cycle >= 6) {
+      return `遠回りの果てに、ふと「${subj}」という一語だけが浮かぶ。`;
+    }
+    return s.hasSplit
+      ? `${subj}。そして、${tail}。`
+      : `${subj}——ただ、それだけ。`;
+  };
+
+  for (let attempt = 0; attempt < 18; attempt++) {
+    let candidate;
+    if (cycle > 4 && Math.random() < 0.14) {
+      candidate = returnPattern();
+    } else if (cycle <= 2) {
+      candidate = pick(phase1Patterns)();
+    } else if (cycle <= 5) {
+      // 批評方向に応じてフェーズ2と3を混ぜながら解体を進める
+      const pool = (critiqueDir === "destroy_prototype" || critiqueDir === "too_long")
+        ? [...phase2Patterns, ...phase3Patterns]
+        : phase2Patterns;
+      candidate = pick(pool)();
+    } else {
+      // cycle 6以降は原型のないキャッチコピーを中心に生成
+      const pool = (Math.random() < 0.22) ? phase2Patterns : phase3Patterns;
+      candidate = pick(pool)();
+    }
+
+    const isDuplicate = state.drafts.some(old => similarity(old, candidate) >= 0.55);
+    if (!isDuplicate) return candidate;
+  }
+
+  return `${c1}の奥で、言葉が${verb}。`;
+}
+
+async function typeOutText(text, targets) {
+  const chars = [...text];
+  let shown = "";
+  for (let i = 0; i < chars.length; i++) {
+    await waitIfPaused();
+    shown += chars[i];
+    targets.forEach(el => { if (el) el.textContent = shown; });
+    state.characters++;
+    updateMetrics();
+    await sleep(getTempoConfig().charDelay);
+  }
+  return text;
+}
+
+/* =========================================================
+   展示モード（VISITOR MODE）の切替と同期
+   ========================================================= */
+function setVisitorMode(enabled) {
+  state.visitorMode = enabled;
+  document.body.classList.toggle("visitor-mode", enabled);
+
+  if (enabled) {
+    syncSeedInputs($("seed").value);
+    if (state.running) {
+      $("visitorSetup").classList.add("hidden");
+      $("visitorFlow").classList.remove("hidden");
+      $("visitorControls").classList.remove("hidden");
+    } else {
+      $("visitorSetup").classList.remove("hidden");
+      $("visitorFlow").classList.add("hidden");
+      $("visitorControls").classList.add("hidden");
+    }
+  } else {
+    syncSeedInputs($("visitorSeed").value);
+  }
+}
+
+/* =========================================================
+   メイン計算ループ
+   ========================================================= */
+async function runComputation() {
+  if (state.running) return;
+
+  const activeSeedInput = state.visitorMode ? $("visitorSeed") : $("seed");
+  const seed = activeSeedInput.value.trim();
+  if (!seed) {
+    alert("あなたの中にある言葉を、一つ入力してください。");
+    activeSeedInput.focus();
+    return;
+  }
+
+  syncSeedInputs(seed);
+
+  state.running = true;
+  state.paused = false;
+  state.finished = false;
+  state.startedAt = Date.now();
+  state.cycles = 0;
+  state.however = 0;
+  state.revisions = 0;
+  state.returns = 0;
+  state.characters = 0;
+  state.drafts = [];
+  state.entries = [];
+  state.similarities = [];
+  state.lastCompletedDraft = "";
+  state.seedInfo = analyzeSeed(seed);
+  state.usedCritiques.clear();
+  state.lastCritiqueDirection = "";
+  state.usedPrompts.clear();
+
+  clearGhostLayer();
+  $("completionOverlay").classList.remove("active");
+  $("history").innerHTML = "";
+
+  $("start").disabled = true;
+  $("pause").disabled = false;
+  $("finish").disabled = false;
+  $("seed").disabled = true;
+  $("visitorSeed").disabled = true;
+
+  $("visitorSetup").classList.add("hidden");
+  $("visitorFlow").classList.remove("hidden");
+  $("visitorControls").classList.remove("hidden");
+  $("visitorPauseBtn").textContent = "PAUSE";
+  $("vHoweverWord").classList.remove("visible");
+  $("vCritiqueText").textContent = "";
+  $("vCurrentText").textContent = "";
+
+  setStatus("COMPUTING", "DECONSTRUCTING INITIAL WORD", true);
+  addEntry("seed", seed);
+  state.timer = setInterval(updateMetrics, 1000);
+
+  const humanPrompts = [
+    "「このコピーで決まりですか？」",
+    "「まだ削れますか？」",
+    "「もっと強い一行になりますか？」",
+    "「これで完成にしていいでしょうか？」",
+    "「さらに研ぎ澄ませますか？」",
+    "「もう一度見直してください。」"
+  ];
+
+  try {
+    // 1. 最初の原型コピーを表示
+    setStatus("GENERATING", "INITIAL COPY", true);
+    $("vCurrentRole").textContent = "DRAFT 00 / INITIAL";
+    const firstWallTarget = addEntry("draft", "", { cycle: 0, current: true });
+
+    const s = state.seedInfo;
+    const initialDraft = s.raw;
+
+    await typeOutText(initialDraft, [firstWallTarget, $("vCurrentText")]);
+
+    state.lastCompletedDraft = initialDraft;
+    state.drafts.push(initialDraft);
+    addGhostLayerText(initialDraft, 0);
+
+    setStatus("OBSERVING", "READING INITIAL COPY", true);
+    await pausableSleep(getTempoConfig().afterInitialDraftMs);
+
+    // 2. 無限の「しかし → 批評 → 改稿（原型解体＆キャッチコピー錬成）」ループ
+    while (state.running) {
+      await waitIfPaused();
+
+      state.cycles++;
+      updateMetrics();
+
+      const askAvail = humanPrompts.filter((_, i) => !state.usedPrompts.has(i));
+      let askIdx;
+      if (askAvail.length === 0) {
+        state.usedPrompts.clear();
+        askIdx = Math.floor(Math.random() * humanPrompts.length);
+      } else {
+        askIdx = humanPrompts.indexOf(pick(askAvail));
+      }
+      state.usedPrompts.add(askIdx);
+      addEntry("ask", humanPrompts[askIdx], { cycle: state.cycles });
+      await pausableSleep(getTempoConfig().afterAskMs);
+
+      // 大きく「しかし」が独立して現れる
+      setStatus("HOWEVER", "REJECTING CURRENT COPY", true);
+      $("vCritiqueText").textContent = "";
+      $("vHoweverWord").classList.add("visible");
+      state.however++;
+      updateMetrics();
+
+      await pausableSleep(getTempoConfig().howeverPauseMs);
+
+      // コピーライター視点の批評文を表示
+      setStatus("CRITICIZING", "COPYWRITER / HOWEVER", true);
+      const kw = extractKeyword(state.lastCompletedDraft, s);
+      const critique = selectCritique(kw, s);
+      const critiqueWallTarget = addEntry("critique", "", { cycle: state.cycles });
+
+      await typeOutText(critique.text, [critiqueWallTarget, $("vCritiqueText")]);
+      await pausableSleep(getTempoConfig().readCritiqueMs);
+
+      // 新しいキャッチコピー（改稿）を表示
+      setStatus("REVISING", "DISTILLING COPY", true);
+      $("vCurrentRole").textContent = `COPY ${String(state.cycles).padStart(2, "0")}`;
+      const revisionText = synthesizeRevision(s, state.lastCompletedDraft, state.cycles, critique.direction);
+      const revisionWallTarget = addEntry("revision", "", { cycle: state.cycles, current: true });
+
+      $("vCurrentText").textContent = "";
+      await typeOutText(revisionText, [revisionWallTarget, $("vCurrentText")]);
+
+      state.lastCompletedDraft = revisionText;
+      state.revisions++;
+      recordSimilarity(revisionText);
+
+      addGhostLayerText(revisionText, state.revisions);
+
+      setStatus("OBSERVING", "READING DISTILLED COPY", true);
+      await pausableSleep(getTempoConfig().readRevisionMs);
+
+      $("vHoweverWord").classList.remove("visible");
+      await pausableSleep(600);
+      $("vCritiqueText").textContent = "";
+    }
+  } catch (error) {
+    if (error.message !== "STOPPED") {
+      console.error(error);
+      setStatus("ERROR", error.message || "UNKNOWN ERROR", false);
+    }
+  } finally {
+    state.running = false;
+    state.paused = false;
+    clearInterval(state.timer);
+
+    $("start").disabled = false;
+    $("pause").disabled = true;
+    $("finish").disabled = true;
+    $("seed").disabled = false;
+    $("visitorSeed").disabled = false;
+    $("pause").textContent = "PAUSE";
+    $("visitorPauseBtn").textContent = "PAUSE";
+
+    if (state.finished) {
+      setStatus("COMPLETED", "THE HUMAN HAS DECIDED", false);
+    } else if ($("status").textContent !== "ERROR") {
+      setStatus("STOPPED", "COMPUTATION HALTED", false);
+    }
+    updateMetrics();
+  }
+}
+
+/* =========================================================
+3. 「完成にする」演出（背景をフェードアウトし、最終コピーだけを残す）
+   ========================================================= */
+function completeArtwork() {
+  if (!state.running && !state.lastCompletedDraft) return;
+
+  state.finished = true;
+  state.running = false;
+  state.paused = false;
+
+  const finalDraft = state.lastCompletedDraft || $("seed").value.trim();
+
+  dissolveGhostLayer();
+
+  $("compFinalText").textContent = finalDraft;
+  $("compVerdictJa").textContent = `${state.however}回の『しかし』のあと、あなたが決めた。`;
+  $("compVerdictEn").textContent = `AFTER ${state.however} HOWEVERs, YOU DECIDED TO STOP.`;
+  $("compMeta").textContent = `最初の言葉：「${$("seed").value.trim()}」 ／ 批評回数：${state.however}回 ／ 改稿回数：${state.revisions}回`;
+
+  $("completionOverlay").classList.add("active");
+}
+
+function resetAll() {
+  state.running = false;
+  state.paused = false;
+  state.finished = false;
+  clearInterval(state.timer);
+
+  state.cycles = 0;
+  state.however = 0;
+  state.revisions = 0;
+  state.returns = 0;
+  state.characters = 0;
+  state.startedAt = 0;
+  state.drafts = [];
+  state.entries = [];
+  state.similarities = [];
+  state.lastCompletedDraft = "";
+
+  clearGhostLayer();
+  $("completionOverlay").classList.remove("active");
+
+  $("history").innerHTML =
+    '<div style="color:var(--muted);font-size:13px;line-height:2.1">あなたの中にある言葉を一つ入力し、START COMPUTATIONを押してください。<br>システムはその言葉から主語と述部を解体し、「たった一行のキャッチコピー」を目指して批評と改稿を無限に繰り返します。</div>';
+
+  $("seed").disabled = false;
+  $("visitorSeed").disabled = false;
+  $("start").disabled = false;
+  $("pause").disabled = true;
+  $("finish").disabled = true;
+  $("pause").textContent = "PAUSE";
+  $("visitorPauseBtn").textContent = "PAUSE";
+  $("similarity").textContent = "—";
+
+  $("visitorSetup").classList.remove("hidden");
+  $("visitorFlow").classList.add("hidden");
+  $("visitorControls").classList.add("hidden");
+  $("vHoweverWord").classList.remove("visible");
+  $("vCritiqueText").textContent = "";
+  $("vCurrentText").textContent = "";
+
+  drawChart();
+  updateMetrics();
+  setStatus("STANDBY", "WAITING FOR INITIAL WORD", false);
+}
+
+function togglePause() {
+  if (!state.running) return;
+  state.paused = !state.paused;
+  const label = state.paused ? "RESUME" : "PAUSE";
+  $("pause").textContent = label;
+  $("visitorPauseBtn").textContent = label;
+  setStatus(state.paused ? "PAUSED" : "COMPUTING", state.paused ? "WAITING" : "CONTINUING", !state.paused);
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  } else {
+    document.exitFullscreen?.().catch(() => {});
+  }
+}
+
+/* =========================================================
+   イベントバインド
+   ========================================================= */
+$("seed").addEventListener("input", e => syncSeedInputs(e.target.value));
+$("visitorSeed").addEventListener("input", e => syncSeedInputs(e.target.value));
+
+document.querySelectorAll(".example-chip").forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (state.running) return;
+    syncSeedInputs(btn.dataset.example || "");
+  });
+});
+
+$("start").addEventListener("click", runComputation);
+$("visitorStartBtn").addEventListener("click", runComputation);
+
+$("pause").addEventListener("click", togglePause);
+$("visitorPauseBtn").addEventListener("click", togglePause);
+
+$("finish").addEventListener("click", completeArtwork);
+$("visitorFinishBtn").addEventListener("click", completeArtwork);
+
+$("reset").addEventListener("click", resetAll);
+$("visitorResetBtn").addEventListener("click", resetAll);
+
+$("fullscreenBtn").addEventListener("click", toggleFullscreen);
+$("visitorFullscreenBtn").addEventListener("click", toggleFullscreen);
+
+$("enterVisitorBtn").addEventListener("click", () => {
+  setVisitorMode(true);
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  }
+});
+
+$("exitVisitorBtn").addEventListener("click", () => {
+  setVisitorMode(false);
+});
+
+$("compRestartBtn").addEventListener("click", () => {
+  resetAll();
+});
+
+$("compToArchiveBtn").addEventListener("click", () => {
+  $("completionOverlay").classList.remove("active");
+  setVisitorMode(false);
+});
+
+$("saveLog").addEventListener("click", () => {
+  const lines = [
+    "しかし — INFINITE COMPUTATION",
+    "DATE: " + new Date().toLocaleString("ja-JP"),
+    "INITIAL WORD: " + $("seed").value,
+    "CYCLES: " + state.cycles,
+    "HOWEVER: " + state.however,
+    "REVISIONS: " + state.revisions,
+    "RETURNS: " + state.returns,
+    "CHARACTERS: " + state.characters,
+    "",
+    ...state.entries.map(e => {
+      const label = {
+        seed: "INITIAL WORD / HUMAN",
+        ask: "PROMPT / HUMAN",
+        draft: "COPY / DRAFT 00",
+        critique: "COPYWRITER / HOWEVER",
+        revision: "COPY / REVISION"
+      }[e.type] || e.type;
+      return "[" + label + "] " + (e.meta.cycle !== undefined ? "CYCLE " + e.meta.cycle : "") + "\n" + e.text + "\n";
+    })
+  ];
+  const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "shikashi-log-" + Date.now() + ".txt";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// URLパラメータ対応
+const params = new URLSearchParams(location.search);
+if (params.get("visitor") === "1") {
+  setVisitorMode(true);
+}
+if (params.get("auto") === "1") {
+  if (!$("seed").value.trim()) {
+    syncSeedInputs("夜の街には、誰も知らない時間が流れている。");
+  }
+  setTimeout(() => {
+    if (!$("start").disabled) runComputation();
+  }, 600);
+}
+</script>
+</body>
+</html>
